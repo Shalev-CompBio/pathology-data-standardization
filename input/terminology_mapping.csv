@@ -1,0 +1,10 @@
+﻿source_term,semantic_category,standard_concept_id,snomed_ct_code,concept_name,vocabulary_id
+"Adenocarcinoma, metastatic",morphologic abnormality,4263459,4590003,"Adenocarcinoma, metastatic",SNOMED
+"Endometrioid adenocarcinoma, secretory variant",morphologic abnormality,4029993,128680006,"Endometrioid adenocarcinoma, secretory variant",SNOMED
+Melanoma in situ,morphologic abnormality,40391314,189758001,Melanoma in situ,SNOMED
+Morphologic description only,finding,4312081,85728002,Morphologic description only,SNOMED
+Pautrier microabscess,morphologic abnormality,4181120,5237007,Pautrier microabscess,SNOMED
+Prostatic structure,body structure,4089450,279689003,Prostatic gland structure,SNOMED
+Skeletal system structure,body structure,4014426,113192009,Skeletal system structure,SNOMED
+Skin structure,body structure,4219601,39937001,Skin structure,SNOMED
+Urinary bladder structure,body structure,4232481,89837001,Urinary bladder structure,SNOMED
