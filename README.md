@@ -4,8 +4,6 @@
 ![Stack](https://img.shields.io/badge/Stack-Python_%7C_SNOMED_CT-FF9800)
 ![Institution](https://img.shields.io/badge/Institution-Hebrew_University_of_Jerusalem-00695C)
 ---
-# Pathology Sample-Level Clinical Extraction Pipeline
-
 **Assignment Submission**
 
 ## Context and Assignment Scope
