@@ -8,7 +8,7 @@
 ---
 ## Context and Assignment Scope
 
-This project was developed as part of an assignment focused on transforming unstructured pathology reports into a minimal, standardized dataset suitable for clinical research queries.
+This project was developed as part of a technical assignment focused on transforming unstructured pathology reports into a minimal, standardized dataset suitable for clinical research queries.
 The emphasis was on conservative extraction, terminology standardization, and methodological transparency rather than full clinical completeness.
 
 ---
