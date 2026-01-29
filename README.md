@@ -1,312 +1,152 @@
-﻿# Pathology Sample-Level Clinical Extraction Pipeline
+# Pathology Sample-Level Clinical Extraction Pipeline
 
-**Version**: 1.0.0  
-**Environment**: Python 3.11+ (Pandas)  
-**Input Format**: Unstructured Pathology Excel Reports (`.xlsx`)  
-**Primary Output**: Research-ready CSV + intermediate artifacts (`.csv`)  
-**License**: Proprietary / Internal Use Only  
+**Assignment Submission**
+
+## Assignment Context
+
+This project was developed as part of an assignment focused on transforming unstructured pathology reports into a minimal, standardized dataset suitable for clinical research queries.
+The emphasis was on conservative extraction, terminology standardization, and methodological transparency rather than full clinical completeness or production optimization.
 
 ---
 
 ## 1. Executive Summary
 
-The **Pathology Sample-Level Clinical Extraction Pipeline** is an ETL + NLP workflow that transforms raw pathology test rows into a compact, sample-level research dataset. It addresses the common clinical data problem where key attributes (malignancy, tumor site, morphology, grade) are embedded in free-text or split across multiple rows.
+This pipeline transforms raw, unstructured pathology test data into a minimal, sample-level structured dataset suitable for clinical research.
+Key clinical attributes such as malignancy, tumor site, morphology, and grade are often embedded in free text or spread across multiple rows; the pipeline consolidates and extracts these attributes while preserving raw text for traceability.
 
-The pipeline is delivered as a single Jupyter Notebook for portability and reproducibility. It uses conservative, traceable transformations with deterministic output files (timestamped) and basic validation to ensure fitness for downstream clinical queries.
-
----
-
-## 2. Directory Structure
-
-```text
-Psipas/
-|-- input/
-|   |-- pathology_tests.xlsx
-|   |-- terminology_mapping.csv
-|-- output/
-|   |-- pathology_sample_level_clinical_extraction_pipeline/
-|       |-- pathology_tests_<TIMESTAMP>.csv
-|       |-- pathology_tests_summary_<TIMESTAMP>.csv
-|       |-- pathology_samples_<TIMESTAMP>.csv
-|       |-- pathology_research_<TIMESTAMP>.csv
-|       |-- terminology_mapping_audit_<TIMESTAMP>.csv
-|       |-- terminology_unmapped_<TIMESTAMP>.csv
-|-- scripts/
-|   |-- pathology_sample_level_clinical_extraction_pipeline.ipynb
-|   |-- README.md
-```
+The output enables standardized clinical queries while maintaining conservative assumptions and auditability.
 
 ---
 
-## 3. Input Data Schema
+## 2. Input Data Overview
 
-**Source**: `input/pathology_tests.xlsx` (first sheet is used).
-
-| Column | Description |
-| :--- | :--- |
-| `Patient_ID` | Anonymized patient identifier |
-| `Code` | Source code for the record (often LOINC or internal code) |
-| `Order_Num` | Order identifier |
-| `Order_Code` | Order code |
-| `Entry_Time` | Timestamp of record entry |
-| `Comment_Type` | Type of comment (clinical diagnosis vs other text) |
-| `Data` | Free-text content associated with `Comment_Type` |
-| `SampleID` | Sample identifier |
-| `SampleNumber` | Sub-sample identifier |
-| `Pathology_Procedure` | Procedure name |
-| `Test_Code` | Test code |
-| `Test_Name` | Test name |
-| `Result` | Test result text |
-
-**Notes**:
-- All fields are loaded as strings (`dtype=str`) and empty cells remain empty strings (not NaN).
-- The notebook assumes the first Excel sheet contains the data.
-- `terminology_mapping.csv` is required for terminology standardization (see Section 5).
+The input consists of an Excel file (`pathology_tests.xlsx`) containing mixed structured and unstructured pathology records, including free-text clinical diagnoses and histology descriptions in Hebrew and English.
+Multiple rows may correspond to the same patient or sample, requiring restructuring to a single-row-per-sample representation.
 
 ---
 
-## 4. Pipeline Stages (What Actually Happens)
+## 3. Data Processing Overview
 
-### Stage 1: Ingestion & Standardization
-**Goal**: Create an immutable CSV copy of the raw Excel sheet and verify data integrity.
+The pipeline performs the following high-level steps:
 
-Key behaviors:
-- Reads the first sheet in `input/pathology_tests.xlsx` with `dtype=str` and `keep_default_na=False`.
-- Writes `pathology_tests_<TIMESTAMP>.csv` using `utf-8-sig` encoding.
-- Verifies **shape**, **column order**, and **cell-level equality** by reloading the CSV.
-- Computes a content hash for additional confidence.
+1. Load the raw Excel data as-is, preserving all values as strings.
+2. Restructure the data from test-level rows to a single row per sample.
+3. Extract a minimal set of clinically relevant fields.
+4. Apply conservative terminology standardization where mappings exist.
+5. Validate that the resulting dataset can support key clinical queries.
 
-### Stage 2: Dataset Profiling (Summary Report)
-**Goal**: Provide a quick data quality profile before restructuring.
+---
 
-Output: `pathology_tests_summary_<TIMESTAMP>.csv`, which includes:
-- **Dataset-level rows**: `source_file`, `sheet_used`, `export_timestamp`, `rows`, `columns`, `total_cells`, `empty_cells_count`, `empty_cells_percent`, `duplicate_rows_count`, `estimated_memory_bytes`.
-- **Column-level rows**: `column_name`, `position_index`, `inferred_type_hint`, `non_empty_count`, `empty_count`, `empty_percent`, `unique_non_empty_count`, `unique_percent_non_empty`, `most_frequent_value`, `most_frequent_count`, `sample_values`.
+## 4. Sample-Level Restructuring
 
-### Stage 2B: Sample-Level Restructuring (Pivot)
-**Goal**: Convert test-level rows into a single row per sample.
+Test-level rows are grouped by `(SampleID, SampleNumber)` to produce a single consolidated row per sample.
 
-Mechanics:
-- Groups by `(SampleID, SampleNumber)`.
-- Preserves metadata: `Patient_ID`, `Code`, `Order_Num`, `Order_Code`, `Entry_Time`, `SampleID`, `SampleNumber`, `Pathology_Procedure`.
-- Aggregates distinct `Comment_Type` values into `comment_types_raw` (pipe-delimited).
-- Aggregates `Data` **only for clinical-diagnosis rows** into `Clinical_Diagnosis`.
-- Aggregates remaining `Data` values into `Additional_Diagnostic_Text`.
-- Creates a `Result_<Test_Name>` column for every distinct `Test_Name`.
-- Creates a `TestCode_<Test_Name>` column (first observed code).
-- If a sample has multiple results for the same test, values are concatenated with ` | ` and de-duplicated.
+During this process:
 
-Output: `pathology_samples_<TIMESTAMP>.csv`.
+* Core metadata (patient ID, order information, procedure) is preserved.
+* Clinical diagnosis text is aggregated separately from other diagnostic text.
+* Test results are pivoted into structured columns.
+* Multiple values for the same test are concatenated and de-duplicated.
 
-### Stage 3: Research Dataset Mapping (Feature Extraction)
-**Goal**: Produce the minimal structured dataset required for clinical analysis.
-
-#### Malignancy (`is_malignant`)
-A priority waterfall is used (negations override keyword hits):
-1. **Structured**: `Result_MALIGNANT` values (including English/Hebrew variants).
-2. **Histology text**: keyword search in `Result_Surgical pathology,microscopic examination`.
-3. **Clinical text**: keyword search in `Clinical_Diagnosis`.
-
-Output encoding is normalized to: **`TRUE` / `FALSE` / `UNKNOWN`**.
-
-#### Tumor Site, Morphology, Grade
-- **Site**: SNOMED body structure pattern first, then histology header regex, then a small bilingual dictionary fallback.
-- **Morphology**: SNOMED morphologic abnormality pattern first, then histology regex, then bilingual dictionary fallback.
-- **Grade**: Histology regex (FIGO, Gleason, grade/group patterns).
-
-#### Terminology Standardization (SNOMED CT)
-- SNOMED-like strings are parsed into `(term, category)` pairs.
-- Terms are mapped using `input/terminology_mapping.csv`.
-- Standardized fields are populated **only when a mapping exists**.
-- Unmapped terms are exported for review.
-- Mapping matches are **case-insensitive exact matches** on `source_term` + `semantic_category`.
-- Standardized outputs are currently populated only from `body structure` and `morphologic abnormality` categories.
-
-Output: `pathology_research_<TIMESTAMP>.csv` with the following schema:
-
-| Column | Description |
-| :--- | :--- |
-| `patient_id` | Patient identifier |
-| `sample_id` | Sample identifier |
-| `sample_number` | Sub-sample identifier |
-| `entry_time` | Entry timestamp |
-| `order_id` | Order number |
-| `order_code` | Order code |
-| `clinical_diagnosis_text_raw` | Clinical diagnosis text (from `Clinical_Diagnosis`) |
-| `macroscopic_text_raw` | Macroscopic text (`Result_MACROSCOPIC`) |
-| `histology_text_raw` | Histology text (`Result_Surgical pathology,microscopic examination`) |
-| `is_malignant` | `TRUE` / `FALSE` / `UNKNOWN` |
-| `malignancy_source` | `structured_field` / `histology_text` / `clinical_text` / empty |
-| `tumor_site_text_raw` | Extracted tumor site (raw text) |
-| `tumor_site_standardized` | SNOMED CT code (from mapping file) |
-| `tumor_morphology_text_raw` | Extracted morphology (raw text) |
-| `tumor_morphology_standardized` | SNOMED CT code (from mapping file) |
-| `tumor_grade_text_raw` | Extracted grade (raw text) |
-| `snomed_codes_raw` | Raw SNOMED text from `Result_SNOMED` |
-| `additional_diagnostic_text_raw` | Non-diagnosis text from `Additional_Diagnostic_Text` |
-| `pathology_procedure` | Source procedure |
-| `source_code` | Source code from input |
-
-### Stage 4: Clinical Query Validation
-**Goal**: Demonstrate that 17 required clinical queries can be answered using structured fields.
-
-The notebook prints a validation report to stdout, including:
-- Patient/sample counts
-- Malignancy counts
-- Site and morphology distributions
-- Grade extraction rates
-- Provenance metrics (structured vs free-text)
-
-**Note**: The notebook currently prints the validation report but does **not** write it to disk, even though a `validation_report_<TIMESTAMP>.txt` path is defined in code.
+This step produces one row per sample while retaining all relevant diagnostic context.
 
 ---
 
 ## 5. Terminology Selection & Field Mapping
 
-### 5.1 Chosen Terminology (and Why)
-**Selected terminology**: **SNOMED CT** (primary), with an oncology-oriented perspective.
+### 5.1 Chosen Terminology
+
+**Selected terminology**: **SNOMED CT**, accessed conceptually through the **OHDSI Athena** framework.
 
 **Rationale**:
-- **Coverage**: SNOMED CT provides rich concepts for tumors, morphology, and anatomical sites.
-- **Adoption**: Widely used in clinical systems and compatible with OHDSI vocabularies (Athena).
-- **Suitability**: Supports both site (body structure) and morphology (morphologic abnormality) patterns, which align with the raw SNOMED-style strings observed in the input.
 
-**Current implementation status**:
-- The pipeline parses SNOMED-like terms and **maps them through a controlled CSV** (`terminology_mapping.csv`).
-- Standardized fields are filled when a mapping exists; otherwise they remain blank.
-- Mapping coverage is auditable via `terminology_mapping_audit_<TIMESTAMP>.csv` and `terminology_unmapped_<TIMESTAMP>.csv`.
+* **Coverage**: SNOMED CT provides comprehensive concepts for anatomical sites and tumor morphology.
+* **Adoption**: Widely used in clinical systems and supported within the OHDSI ecosystem.
+* **Suitability**: Well aligned with pathology and oncology data, including body structure and morphologic abnormality concepts observed in the source data.
 
-**Required columns in `terminology_mapping.csv`**:
-- `source_term`
-- `semantic_category`
-- `standard_concept_id`
-- `snomed_ct_code`
-- `concept_name`
-- `vocabulary_id`
-
-**Matching rules**:
-- Matching is done on **`source_term` + `semantic_category`** after trimming and lowercasing.
-- If a row exists in the mapping file but codes are blank, the standardized fields remain empty.
-- Rows with categories other than `body structure` / `morphologic abnormality` are logged but not used to fill standardized outputs.
-
-**Excel caution**:
-- If you edit the mapping file in Excel, set code columns to **Text** to avoid scientific notation (e.g., `1.29E+08`).
-
-### 5.2 Field Mapping Documentation (Minimal Dataset)
-
-| Output Field | Source(s) | Extraction Logic | Coding / Standardization |
-| :--- | :--- | :--- | :--- |
-| `is_malignant` | `Result_MALIGNANT`, histology text, clinical diagnosis | Priority waterfall with negation handling | Encoded as `TRUE` / `FALSE` / `UNKNOWN` |
-| `tumor_site_text_raw` | `Result_SNOMED`, histology text, clinical diagnosis | SNOMED pattern → regex header → bilingual dictionary | Raw text (standardized placeholder exists) |
-| `tumor_morphology_text_raw` | `Result_SNOMED`, histology text, clinical diagnosis | SNOMED pattern → histology regex → bilingual dictionary | Raw text (standardized placeholder exists) |
-| `tumor_grade_text_raw` | Histology text | Regex patterns (FIGO, Gleason, grade group) | Raw text |
-| `clinical_diagnosis_text_raw` | `Data` filtered by clinical `Comment_Type` | Filter + concatenate | Raw text |
-| `additional_diagnostic_text_raw` | Remaining `Data` rows | Concatenate | Raw text |
+SNOMED CT was therefore selected as the primary terminology for coding pathology findings.
 
 ---
 
-## 6. Approach & Methodology
+### 5.2 Minimal Field Mapping
 
-### 6.1 Resources Used
-- **OHDSI Athena** and SNOMED CT documentation to align terminology and patterns.
-- **Pathology terminology references** (general oncology/pathology literature).
-- **LLM tools (optional, offline)** for translation or keyword expansion (not used for automated coding in the pipeline itself).
+Only fields that could be consistently identified across samples were extracted.
 
-### 6.2 Handling Ambiguity
-- **Negations override keywords** (e.g., “אין עדות לממאירות” → `FALSE`).
-- If no reliable signal is found, malignancy is set to **`UNKNOWN`**.
-- Site/morphology extraction falls back to a **small bilingual dictionary** when regex/SNOMED patterns fail.
+* **Malignancy (`is_malignant`)**
+  Derived using a priority-based approach combining structured fields and free-text signals, with explicit negation handling.
+  Encoded as `TRUE`, `FALSE`, or `UNKNOWN`.
 
-### 6.3 Tools and Techniques
-- Deterministic ETL (pandas), strict `dtype=str`.
-- Regex + keyword matching (English + Hebrew).
-- Bilingual dictionaries for site/morphology fallback.
-- Explicit terminology mapping via `terminology_mapping.csv` (SNOMED CT codes).
-- Validation queries to check fitness for research use.
+* **Tumor site**
+  Extracted from SNOMED-like strings, histology headers, or a small bilingual dictionary.
+  Stored as raw text, with optional SNOMED CT standardization when a mapping exists.
 
-### 6.4 Challenges Encountered
-- **Multilingual text** (Hebrew + English).
-- **Inconsistent terminology** across fields.
-- **Mixed structured/unstructured content** within the same sample.
+* **Tumor morphology**
+  Extracted using SNOMED patterns, histology regex rules, or bilingual dictionary fallback.
+  Stored as raw text, with optional SNOMED CT standardization.
 
-### 6.5 Rationale for Minimal Fields
-- The dataset is intentionally minimal and focused on fields required to answer clinical queries about:
-  **tumor behavior, site, morphology, and grade**.
-- Additional fields are kept raw for traceability and audit.
+* **Tumor grade**
+  Extracted from histology text using FIGO, Gleason, and grade-group patterns.
 
-### 6.6 Baseline Data Profile (Example Run)
-The following figures were observed on the **provided sample dataset** during an initial run (January 29, 2026).  
-These numbers are **informational only** and may change after logic updates or when using different datasets.
+* **Clinical diagnosis text**
+  Preserved verbatim to maintain interpretability and auditability.
 
-- **Raw input size (Stage 1)**: 81 rows × 13 columns.
-- **Empty-cell rate (Stage 1)**: ~4.18% empty cells.
-- **Research dataset size (Stage 3)**: 15 rows × 20 columns (one row per sample).
-- **Malignancy classification coverage**: 100% classified in that run (8 TRUE, 7 FALSE).
-- **Extraction coverage (Stage 3)**:
-  - Tumor site: 11/15
-  - Morphology: 7/15
-  - Grade: 2/15 (low due to specific FIGO/Gleason regex requirements)
+All terminology standardization relies on an explicit mapping file (`terminology_mapping.csv`).
+If no mapping exists, standardized fields are left empty and the raw extracted text is retained.
 
 ---
 
-## 7. Bonus: LLM-Assisted Automation Proposal (Optional)
+## 6. Clinical Query Validation
 
-If scaling to thousands of reports, an LLM-assisted pipeline could be used as a **secondary extraction layer**:
+The resulting dataset enables clinical research queries such as:
 
-**Prompt strategy (high level)**:
-- Provide the raw histology + clinical text.
-- Ask for **structured JSON** with fixed keys (site, morphology, behavior, grade, negation flags).
-- Enforce schema with strict validators.
+* Counting patients or samples with malignant tumors using the `is_malignant` field.
+* Identifying bladder cancer cases by filtering tumor site fields (standardized or raw).
+* Identifying kidney-related suspicious samples through site extraction.
+* Counting benign tumors using malignancy classification.
 
-**Validation steps**:
-- Automatic rule-based checks (e.g., negation conflicts, missing required fields).
-- Cross-check with SNOMED / ICD‑O dictionaries.
-- Confidence scoring and thresholding.
-
-**Human review**:
-- Required for low-confidence outputs, conflicting evidence, or rare morphologies.
+Validation queries are executed within the notebook to confirm that these questions can be answered using the structured fields.
 
 ---
 
-## 8. Usage Instructions
+## 7. Approach & Methodology
 
-### Prerequisites
-- **Python 3.11+**
-- **Pandas** (`pip install pandas`)
-- Read/write permissions to the project folder
+The guiding principle of the approach was to extract only fields that could be consistently identified across all samples, while preserving raw text for auditability.
 
-### Run the Pipeline
-1. Place the raw Excel file at `input/pathology_tests.xlsx`.
-2. Prepare `input/terminology_mapping.csv` with SNOMED CT mappings.
-3. Open `scripts/pathology_sample_level_clinical_extraction_pipeline.ipynb` in VS Code or JupyterLab.
-4. Execute **Run All**.
-5. Collect outputs from `output/pathology_sample_level_clinical_extraction_pipeline/`.
+### Resources Used
 
-**Tip**: If you edit `terminology_mapping.csv` in Excel, set code columns to **Text** to prevent scientific-notation corruption.
+* OHDSI Athena and SNOMED CT documentation.
+* General pathology and oncology terminology references.
+* Optional LLM tools for translation or keyword exploration (not used for automated coding).
 
----
+### Handling Ambiguity
 
-## 9. Troubleshooting & Customization
+* Explicit negation handling overrides keyword-based signals.
+* Ambiguous or unclear cases are labeled as `UNKNOWN`.
+* No inference is made when evidence is insufficient.
 
-- **"Input file not found"**: Ensure `input/pathology_tests.xlsx` exists (not in `scripts/`).
-- **Stage 1 verification failed**: Check disk space and encoding; Stage 1 expects byte-for-byte equality after CSV write/read.
-- **Noisy clinical diagnosis field**: Adjust the `Comment_Type` filter in `pivot_sample_to_row` (Stage 2B).
-- **Low malignancy extraction rate**: Edit the `MALIGNANT_KEYWORDS`, `BENIGN_KEYWORDS`, and `NEGATION_PHRASES` lists in the **Stage 3 Field Mapping Functions** cell.
-- **Missing site/morphology**: Extend the regex patterns or the bilingual dictionaries in `extract_tumor_site` / `extract_tumor_morphology`.
-- **Standardized fields empty**: Ensure `terminology_mapping.csv` contains matching `source_term` + `semantic_category` pairs for the extracted SNOMED terms.
-- **Terminology file missing/empty**: Create `input/terminology_mapping.csv` and populate it; otherwise standardized fields will remain blank and audit will list all terms as unmapped.
+### Challenges
+
+* Multilingual free text (Hebrew and English).
+* Inconsistent terminology across records.
+* Mixed structured and unstructured content within the same sample.
+
+This conservative approach prioritizes reliability and interpretability over aggressive normalization.
 
 ---
 
-## 10. Known Limitations
+## 8. Bonus: LLM-Assisted Automation Proposal
 
-- Only the **first Excel sheet** is processed.
-- Keyword/regex extraction is heuristic and may miss rare or non-standard phrasing.
-- The bilingual dictionaries are intentionally small and require manual expansion for better coverage.
-- Standardization coverage depends on the completeness of `terminology_mapping.csv`.
-- Terms categorized as `finding` are audited but not used to populate standardized site/morphology fields by default.
+To scale this process to thousands of reports, an LLM-assisted layer could be introduced as a secondary extraction step.
+
+A possible strategy would include:
+
+* Prompting the model with raw clinical and histology text.
+* Requesting a strictly structured JSON output with fixed fields (site, morphology, behavior, grade).
+* Enforcing schema validation and confidence thresholds.
+* Flagging low-confidence or conflicting cases for human review.
+
+Rule-based validation and terminology cross-checking would remain essential to ensure reliability.
 
 ---
 
-**Developed by**: Psipas Data Engineering Team  
-**Last Updated**: January 29, 2026
+**Submission Date**: January 29, 2026
