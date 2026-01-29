@@ -5,7 +5,7 @@
 ![Institution](https://img.shields.io/badge/Institution-Hebrew_University_of_Jerusalem-00695C)
 ---
 **Assignment Submission**
-
+---
 ## Context and Assignment Scope
 
 This project was developed as part of an assignment focused on transforming unstructured pathology reports into a minimal, standardized dataset suitable for clinical research queries.
@@ -103,14 +103,41 @@ If no mapping exists, standardized fields are left empty and raw extracted text 
 
 ## 6. Clinical Query Validation
 
-The resulting dataset supports clinical research queries such as:
+Validation queries were executed on the final structured dataset to demonstrate that it supports the clinical questions specified in the assignment.
 
-* Counting patients or samples with malignant tumors using the `is_malignant` field.
-* Identifying bladder cancer cases by filtering tumor site fields (standardized or raw).
-* Identifying kidney-related suspicious samples through site extraction.
-* Counting benign tumors using malignancy classification.
+### Cohort Size and Malignancy Status
 
-These queries are supported directly by structured fields in the final dataset and do not require re-parsing of raw text.
+* **Unique patients:** 9
+* **Total samples:** 15
+* **Patients with malignant tumors:** 8
+* **Patients with benign tumors:** 2
+* **Samples with unknown malignancy:** 0
+
+### Tumor Site / Anatomical Location
+
+* **Patients with prostate tumors:** 1
+* **Sample distribution by anatomical site (examples):** bladder (4), prostate gland/structure (3), skin (3), endometrial curettage (1), cervical lymph node (1), gastric mucosa (1), skeletal system structure (1).
+
+Malignancy status was successfully stratified by anatomical site (e.g., malignant lymph node and gastric mucosa samples, benign prostate samples).
+
+### Tumor Morphology
+
+* **Patients with adenocarcinoma:** 3
+* Morphologies identified include adenocarcinoma variants, melanoma in situ, metastatic carcinoma, and lymphoma-related findings.
+* Morphology–malignancy relationships were consistently resolved for all extracted morphologies.
+
+### Tumor Grade
+
+* **Samples with reported tumor grade:** 2
+* Grades included FIGO grade 1–2 and Gleason score 3+3=6.
+
+### Data Quality and Provenance
+
+* **Malignancy source:** histology text (10 samples), structured fields (5 samples).
+* **Samples classified using free-text only:** 10
+* **Samples with unclear malignancy status:** 0
+
+All 17 predefined validation queries completed successfully, confirming that the minimal structured dataset can answer clinical questions related to tumor behavior, site, morphology, and grade without re-parsing raw text.
 
 ---
 
@@ -121,13 +148,16 @@ The guiding principle of the approach was to extract only fields that could be c
 **Resources used:**
 OHDSI Athena and SNOMED CT documentation, along with general pathology and oncology references.
 
+**Tools and techniques:**
+Implemented in Python using Pandas for data manipulation and regular expressions and keyword-based rules for extraction from multilingual free text (Hebrew and English).
+
 **Handling ambiguity:**
 Explicit negation handling overrides keyword-based signals.
 Ambiguous or unclear cases are labeled as `UNKNOWN`.
 No inference is made when evidence is insufficient.
 
 **Challenges encountered:**
-Multilingual free text (Hebrew and English), inconsistent terminology, and mixed structured and unstructured content within the same sample.
+Multilingual free text, inconsistent terminology, and mixed structured and unstructured content within the same sample.
 
 The minimal dataset was designed specifically to support clinical questions related to tumor location, behavior, and morphology, as demonstrated in the query validation section.
 
@@ -135,7 +165,7 @@ The minimal dataset was designed specifically to support clinical questions rela
 
 ## 8. Bonus: LLM-Assisted Automation Proposal
 
-To scale this process to thousands of reports, an LLM-assisted layer could be introduced as a secondary extraction step.
+To scale this process to thousands of pathology reports, an LLM-assisted layer could be introduced as a secondary extraction step.
 
 A possible strategy would include:
 
