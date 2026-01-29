@@ -165,15 +165,14 @@ The minimal dataset was designed specifically to support clinical questions rela
 
 ## 8. Bonus: LLM-Assisted Automation Proposal
 
-To scale this process to thousands of pathology reports, an LLM-assisted layer could be introduced as a secondary extraction step.
+To scale this process to thousands of pathology reports, an LLM-assisted layer could be introduced as a secondary extraction step, complementing the existing rule-based pipeline.
 
 A possible strategy would include:
 
-* Prompting the model with raw clinical and histology text.
-* Requesting strictly structured JSON outputs with fixed fields (site, morphology, behavior, grade).
-* Applying schema validation, confidence thresholds, and rule-based consistency checks.
-* Requiring human review for low-confidence or conflicting cases.
-
+* Prompting the model with raw clinical and histology text (Hebrew and English) using a domain-specific instruction.
+* Requesting strictly structured JSON outputs with fixed fields (tumor site, morphology, behavior, and grade).
+* Applying automated schema validation, confidence thresholds, and rule-based consistency checks.
+* Requiring human review for low-confidence cases or conflicting evidence across sources.
 ---
 
 **Submission Date:** January 29, 2026
