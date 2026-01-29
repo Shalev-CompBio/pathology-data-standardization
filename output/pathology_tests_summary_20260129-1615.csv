@@ -1,0 +1,24 @@
+﻿section,key,value,column_name,position_index,inferred_type_hint,non_empty_count,empty_count,empty_percent,unique_non_empty_count,unique_percent_non_empty,most_frequent_value,most_frequent_count,sample_values
+dataset,source_file,input\pathology_tests.xlsx,,,,,,,,,,,
+dataset,sheet_used,Sheet1,,,,,,,,,,,
+dataset,export_timestamp,20260129-1615,,,,,,,,,,,
+dataset,rows,81,,,,,,,,,,,
+dataset,columns,13,,,,,,,,,,,
+dataset,total_cells,1053,,,,,,,,,,,
+dataset,empty_cells_count,44,,,,,,,,,,,
+dataset,empty_cells_percent,4.18,,,,,,,,,,,
+dataset,duplicate_rows_count,0,,,,,,,,,,,
+dataset,estimated_memory_bytes,112304,,,,,,,,,,,
+column,,,Patient_ID,0,string,81,0,0.0,9,11.11,PT1003,29,PT1000 | PT1001 | PT1002
+column,,,Code,1,string,81,0,0.0,9,11.11,3032665-6,29,112233-4 | 3032665-6 | 30421959-5
+column,,,Order_Num,2,numeric-like,81,0,0.0,9,11.11,900003,29,900000 | 900001 | 900002
+column,,,Order_Code,3,numeric-like,81,0,0.0,9,11.11,20421211,29,20409921 | 20421211 | 23111910
+column,,,Entry_Time,4,date-like,81,0,0.0,9,11.11,2016-03-23 14:07:00,29,2016-03-23 14:07:00 | 2016-05-09 07:18:00 | 2017-09-11 12:40:00
+column,,,Comment_Type,5,string,81,0,0.0,1,1.23,אבחנה קלינית,81,אבחנה קלינית
+column,,,Data,6,string,75,6,7.41,9,12.0,CIS of bladder Random Bx. of bladder אזור טריגון כיפת שלפוחית דופן אחורי דופן שמאלי דופן ימני,29,CIS of bladder Random Bx. of bladder אזור טריגון כיפת שלפוחית דופן אחורי דופן שמאלי דופן ימני | אישה בת 55. ברקע סרטן שד (2015). כעת נגע עורי בבית החזה. History of Breast CA. Skin lesion chest wall. | ביופסיות ערמונים MRI FUSION BIOPSY OF PROSTATE PSA=5.8 מעקב פעיל ל CAP 1. אזור חשוד PZ לטרלי קדמי מידגלנד בסיס ימני. 2. PZ ימין. 3. PZ שמאל.
+column,,,SampleID,7,numeric-like,81,0,0.0,9,11.11,800003,29,800000 | 800001 | 800002
+column,,,SampleNumber,8,numeric-like,81,0,0.0,5,6.17,1,47,1 | 2 | 3
+column,,,Pathology_Procedure,9,string,81,0,0.0,1,1.23,Histology process panel,81,Histology process panel
+column,,,Test_Code,10,numeric-like,81,0,0.0,7,8.64,808900000,16,100300106 | 808600000 | 808800800
+column,,,Test_Name,11,string,81,0,0.0,7,8.64,SNOMED,16,Histology process panel | MACROSCOPIC | MALIGNANT
+column,,,Result,12,string,43,38,46.91,40,93.02,M,3,"Adenocarcinoma, metastatic (morphologic abnormality) | Adenocarcinoma, no subtype (morphologic abnormality) | Box 1:   One fragment from the urinary bladder showing mild chronic inflammation and mucosal folds."
